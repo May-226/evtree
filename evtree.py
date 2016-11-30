@@ -1,10 +1,29 @@
 import numpy as np
+import csv
+import math
+
+class Node(object):
+    def __init__(self, attribute=None, value=None, terminal_node=False, intermediate=False):
+        self.attribute = attribute
+        self.value = value
+        self.left = None
+        self.right = None
+        self.terminal_node = terminal_node
+        self.intermediate = intermediate
+
+
+class DecisionTree(object):
+    def __init__(self):
+        self.tree = None
+
+    def createTree(self, X, y):
+        pass
 
 class evtree(object):
 
 
     def __init__(self, p_crossover=0.6, p_mutation=0.4, p_split=0.1, p_prune=0.1, population_size = 400, max_iter = 500):
-        self.population = [[] for i in range(population_size)]
+        self.population = [[None]]*population_size
         self.p_crossover = p_crossover
         self.p_mutation = p_mutation
         self.p_split = p_split
@@ -28,8 +47,34 @@ class evtree(object):
     def test(self, X):
         pass
 
+    def treeDepth(self, tree):
+        # given a tree, calculate its depth
+        pass
+
+    def split_points(self, values):
+        # given a numpy array of values, calculate the split points.
+        return (values[1:] + values[:-1])/2.0
+
+    def get_threshold(self, attr_idx, X, y):
+        # Given data and attributes, suggests a split point radomly
+        vals = np.sort(X[:, attr_idx])
+        thresholds = self.split_points(vals)
+
+        threshold = np.random.choice(thresholds, 1)[0]
+        return threshold
+
+
+    def create_inital_tree(self, X, y, attributes):
+        split_attribute = attributes.pop(np.random.randint(0, len(attributes)))
+        split_value = self.get_threshold(split_attribute.keys()[0], X, y)
+
+
+
     def initialization(self, X, y):
-        for _ in xrange(self.population_size):
+        m, n = X.shape
+        for idx in xrange(self.population_size):
+            initial_tree = 0
+
 
         pass
 
@@ -64,3 +109,54 @@ class evtree(object):
 
     def survivor_selction(self):
         pass
+
+def quartile_bins(data):
+    '''Converts a continuous variable into categorical variable with 4 outcomes
+    Example Input: [3,1,4,5,6,8,2,10,9,7]
+    Example Output: ['2.5-5','1-2.5','2.5-5',...,'5-7.5']'''
+    a = [float(x) for x in data]
+    b = a
+    a = sorted(a)
+    a = np.array(a)
+    p25, p50, p75 = np.percentile(a, [25, 50, 75])
+    acat = []
+    for point in b:
+        if (point <= p25):
+            acat.append(str(a[0])+' - '+str(p25))
+        elif (point <= p50):
+            acat.append(str(p25)+' - '+str(p50))
+        elif (point <= p75):
+            acat.append(str(p50)+' - '+str(p75))
+        else:
+            acat.append(str(p75)+' - '+str(a[-1]))
+    return acat
+
+def data_preprocess(data):
+    '''Preprocess features. Convert continuous variables to categorical variables'''
+    features = len(data[0]) - 1
+    data_points = len(data)
+    dataX = []
+    for i in range(features):
+        vals = [rowset[i] for rowset in data]
+        valcat = quartile_bins(vals)
+        dataX.append(valcat)
+    Ys = [rowset[features] for rowset in data]
+    dataX.append(Ys)
+    dataX = zip(*dataX)
+    return dataX
+
+if __name__ == '__main__':
+    with open('hw4-data.csv') as f:
+        header = next(f, None)
+
+    data = np.genfromtxt('hw4-data.csv', delimiter=',')
+    X = data[1:, :-1]
+    y = data[1:, 0:1]
+
+    attributes = [{idx: attr.strip()} for idx, attr in enumerate(header.split(","))]
+    #print attributes
+    outcome = attributes[-1].values()[0]
+    attributes = attributes[:-1]
+
+    et = evtree()
+    #print et.get_threshold(2, X, y)
