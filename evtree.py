@@ -63,11 +63,33 @@ class evtree(object):
         threshold = np.random.choice(thresholds, 1)[0]
         return threshold
 
+    def most_common_label(self, labels):
+        # given a list of labels, return the most common label
+        unique_elements = list(set((labels)))
+        max_freq = 0
+        common_element = unique_elements[0]
+        for element in unique_elements:
+            if (labels.count(element) > max_freq):
+                max_freq = labels.count(element)
+                common_element = element
+        return common_element
 
-    def create_inital_tree(self, X, y, attributes):
-        split_attribute = attributes.pop(np.random.randint(0, len(attributes)))
+
+    def create_inital_tree(self, X, y, attrs):
+        attrs = attrs[:]
+        split_attribute = attrs.pop(np.random.randint(0, len(attrs)))
         split_value = self.get_threshold(split_attribute.keys()[0], X, y)
+        root = Node(split_attribute, split_value)
 
+        # get a left child for the root
+        split_attribute = attrs.pop(np.random.randint(0, len(attrs)))
+        split_value = self.get_threshold(split_attribute.keys()[0], X, y)
+        root.left = Node(split_attribute, split_value)
+
+        # get a right child for the root
+        split_attribute = attrs.pop(np.random.randint(0, len(attrs)))
+        split_value = self.get_threshold(split_attribute.keys()[0], X, y)
+        root.right = Node(split_attribute, split_value)
 
 
     def initialization(self, X, y):
@@ -151,7 +173,8 @@ if __name__ == '__main__':
 
     data = np.genfromtxt('hw4-data.csv', delimiter=',')
     X = data[1:, :-1]
-    y = data[1:, 0:1]
+    #y = data[1:, -1:]
+    y = data[1:, -1]
 
     attributes = [{idx: attr.strip()} for idx, attr in enumerate(header.split(","))]
     #print attributes
@@ -160,3 +183,4 @@ if __name__ == '__main__':
 
     et = evtree()
     #print et.get_threshold(2, X, y)
+    print et.most_common_label(list(y))
