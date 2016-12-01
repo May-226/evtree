@@ -13,17 +13,33 @@ class Node(object):
 
 
 class DecisionTree(object):
-    def __init__(self):
-        self.tree = None
+    def __init__(self, root):
+        self.tree = root
+        self.depth = self.tree_depth()
+        #print self.depth
 
-    def createTree(self, X, y):
-        pass
+    def tree_depth(self):
+        count = 0
+        if self.tree is not None and not self.tree.terminal_node:
+            count = self.number_of_nodes(self.tree)
+        return count
+
+    def number_of_nodes(self, node):
+        count = 1
+        if node.left is not None and not node.left.terminal_node:
+            count += self.number_of_nodes(node.left)
+        if node.right is not None and not node.right.terminal_node:
+            count += self.number_of_nodes(node.right)
+        return count
+
+
+
 
 class evtree(object):
 
 
-    def __init__(self, p_crossover=0.6, p_mutation=0.4, p_split=0.1, p_prune=0.1, population_size = 400, max_iter = 500):
-        self.population = [[None]]*population_size
+    def __init__(self, p_crossover=0.6, p_mutation=0.4, p_split=0.7, p_prune=0.1, population_size = 400, max_iter = 500):
+        self.population = []
         self.p_crossover = p_crossover
         self.p_mutation = p_mutation
         self.p_split = p_split
@@ -65,7 +81,7 @@ class evtree(object):
 
     def most_common_label(self, labels):
         # given a list of labels, return the most common label
-        unique_elements = list(set((labels)))
+        unique_elements = list(set(labels))
         max_freq = 0
         common_element = unique_elements[0]
         for element in unique_elements:
@@ -74,31 +90,82 @@ class evtree(object):
                 common_element = element
         return common_element
 
+    def insert_children(self, node, X, y, attrs, attr_idx, split_value, terminal=False):
+        # given a node, insert children
+        attrs = attrs[:]
+        if not terminal:
+            X_left = X[X[:, attr_idx] <= split_value]
+            y_left = y[X[:, attr_idx] <= split_value]
 
-    def create_inital_tree(self, X, y, attrs):
+            X_right = X[X[:, attr_idx] > split_value]
+            y_right = y[X[:, attr_idx] > split_value]
+
+            # get a left child for the root
+            split_attribute_left = attrs.pop(np.random.randint(0, len(attrs)))
+            attr_idx_left = split_attribute_left.keys()[0]
+            split_value_left = self.get_threshold(attr_idx_left, X_left, y_left)
+            node.left = Node(split_attribute_left, split_value_left)
+
+            # get a right child for the root
+            split_attribute_right = attrs.pop(np.random.randint(0, len(attrs)))
+            attr_idx_right = split_attribute_right.keys()[0]
+            split_value_right = self.get_threshold(attr_idx_right, X_right, y_right)
+            node.right = Node(split_attribute_right, split_value_right)
+
+            # get the leaves
+            node.left = self.insert_children(node.left, X_left, y_left, attrs, attr_idx_left, split_value_left, True)
+            node.right = self.insert_children(node.right, X_right, y_right, attrs, attr_idx_right, split_value_right, True)
+            return node
+
+        else:
+            random_label = np.random.choice(y, 1)[0]
+            y_left = y[X[:, attr_idx] <= split_value]
+            #node.left = Node(None, self.most_common_label(list(y_left)), terminal_node=True)
+            node.left = Node(None, random_label, terminal_node=True)
+
+            random_label = np.random.choice(y, 1)[0]
+            y_right = y[X[:, attr_idx] > split_value]
+            node.right = Node(None, random_label, terminal_node=True)
+            return node
+
+    def create_initial_tree(self, X, y, attrs):
         attrs = attrs[:]
         split_attribute = attrs.pop(np.random.randint(0, len(attrs)))
-        split_value = self.get_threshold(split_attribute.keys()[0], X, y)
+        attr_idx = split_attribute.keys()[0]
+        split_value = self.get_threshold(attr_idx, X, y)
         root = Node(split_attribute, split_value)
+        root = self.insert_children(root, X, y, attrs, attr_idx, split_value, False)
 
-        # get a left child for the root
-        split_attribute = attrs.pop(np.random.randint(0, len(attrs)))
-        split_value = self.get_threshold(split_attribute.keys()[0], X, y)
-        root.left = Node(split_attribute, split_value)
+        # split the left node with a probability p_split
+        if np.random.random() < self.p_split:
+            root.left = self.insert_children(root.left, X, y, attrs, attr_idx, split_value, False)
 
-        # get a right child for the root
-        split_attribute = attrs.pop(np.random.randint(0, len(attrs)))
-        split_value = self.get_threshold(split_attribute.keys()[0], X, y)
-        root.right = Node(split_attribute, split_value)
+        # similarly, split the right node with a probability p_split
+        if np.random.random() < self.p_split:
+            root.right = self.insert_children(root.right, X, y, attrs, attr_idx, split_value, False)
 
+        #self.print_tree(root)
+        return root
 
-    def initialization(self, X, y):
-        m, n = X.shape
-        for idx in xrange(self.population_size):
-            initial_tree = 0
+    def print_tree(self, root):
+        # given a root, print the tree in level order traversal
+        node = root
+        print (node.attribute, node.value)
+        node = root.left
+        print (node.attribute, node.value)
+        node = root.right
+        print (node.attribute, node.value)
+        node = root.left.left
+        print (node.attribute, node.value)
+        node = root.left.right
+        print (node.attribute, node.value)
 
+    def initialization(self, X, y, attrs):
 
-        pass
+        for _ in xrange(self.population_size):
+            root1 = self.create_initial_tree(X, y, attrs)
+            tree1 = DecisionTree(root1)
+            self.population.append((tree1, 0))
 
     def evaluate(self, X, y):
         # given a decision tree, return the classification accuracy?
@@ -183,4 +250,4 @@ if __name__ == '__main__':
 
     et = evtree()
     #print et.get_threshold(2, X, y)
-    print et.most_common_label(list(y))
+    et.initialization(X, y, attributes)
