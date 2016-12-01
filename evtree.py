@@ -1,4 +1,5 @@
 import numpy as np
+from operator import itemgetter
 import csv
 import math
 
@@ -123,6 +124,8 @@ class evtree(object):
             return node
 
     def create_initial_tree(self, X, y, attrs):
+        X = X[:]
+        y = y[:]
         attrs = attrs[:]
         split_attribute = attrs.pop(np.random.randint(0, len(attrs)))
         attr_idx = split_attribute.keys()[0]
@@ -164,6 +167,9 @@ class evtree(object):
         print new_tree.depth
 
     def initialization(self, X, y, attrs):
+        X = X[:]
+        y = y[:]
+        attrs = attrs[:]
         # create an initial population of trees
         for _ in xrange(self.population_size):
             root1 = self.create_initial_tree(X, y, attrs)
@@ -171,7 +177,7 @@ class evtree(object):
             accuracy = self.evaluate(tree1, X, y)
             depth = tree1.depth
             fitness_score = self.fitness(accuracy, depth)
-            self.population.append((tree1, self.evaluate(tree1, X, y), fitness_score))
+            self.population.append((tree1, fitness_score))
 
     def fitness(self, accuracy, depth):
         # compute a fitness score by approriately weighting accuracy and depth
@@ -181,11 +187,13 @@ class evtree(object):
         alpha2 = 0.01 # penalty for large trees
 
         depth_score = depth / self.target_depth
-        fitness_score = (alpha1*(1-accuracy)) + (alpha2*depth_score)
+        fitness_score = (alpha1*accuracy) + (alpha2*(1-depth_score))
         return fitness_score
 
     def evaluate(self, tree, X, y):
         # given a decision tree, return the classification accuracy?
+        X = X[:]
+        y = y[:]
         m, n = X.shape
         correct = 0
 
@@ -211,6 +219,8 @@ class evtree(object):
     def mutate(self, tree, node_idx, X, y, attrs):
         # randomly change the node at node_idx in tree
         # return a new Decision Tree
+        X = X[:]
+        y = y[:]
         attrs = attrs[:]
         split_attribute = attrs.pop(np.random.randint(0, len(attrs)))
         attr_idx = split_attribute.keys()[0]
@@ -302,10 +312,38 @@ class evtree(object):
         return DecisionTree(head1)
 
 
-    def survivor_selction(self):
+    def survivor_selction(self, X, y, attrs):
         # select the individuals who will be available for next generation
+        X = X[:]
+        y = y[:]
+        attrs = attrs[:]
+        sorted_population = self.population[:]
+        sorted_population.sort(key=itemgetter(1), reverse=True)
+        next_generation = sorted_population[:3]  # elite children get free pass!
+        fitness_scores = np.array([_[1] for _ in self.population])
+        fitness_scores = fitness_scores / float(sum(fitness_scores))
 
-        pass
+        population_idxs = xrange(self.population_size)
+        parents = np.random.choice(population_idxs, 5000, True, fitness_scores)
+        idx = 0
+        while len(next_generation) < self.population_size:
+            parent1 = self.population[parents[idx]][0]
+            idx += 1
+            node_idx1 = np.random.randint(0, parent1.depth-1)
+            if np.random.random() < self.p_mutation:
+                child = self.mutate(parent1, node_idx1, X, y, attrs)
+            else:
+                parent2 = self.population[parents[idx]][0]
+                idx += 1
+                node_idx2 = np.random.randint(0, parent2.depth-1)
+                child = self.crossover(parent1, node_idx1, parent2, node_idx2)
+
+            accuracy = self.evaluate(child, X, y)
+            depth = child.depth
+            fitness_score = self.fitness(accuracy, depth)
+            next_generation.append((child, fitness_score))
+        self.population = next_generation
+
 
 def quartile_bins(data):
     '''Converts a continuous variable into categorical variable with 4 outcomes
@@ -358,5 +396,6 @@ if __name__ == '__main__':
 
     et = evtree()
     #print et.get_threshold(2, X, y)
-    #et.initialization(X, y, attributes)
-    et.proto(X, y, attributes)
+    et.initialization(X, y, attributes)
+    et.survivor_selction(X, y, attributes)
+    #et.proto(X, y, attributes)
