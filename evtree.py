@@ -157,14 +157,9 @@ class evtree(object):
     def proto(self, X, y, attrs):
         root1 = self.create_initial_tree(X, y, attrs)
         tree1 = DecisionTree(root1)
-
-        root2 = self.create_initial_tree(X, y, attrs)
-        tree2 = DecisionTree(root2)
-
         print tree1.depth
-        print tree2.depth
 
-        new_tree = self.crossover(tree1, 2, tree2, 0)
+        new_tree = self.mutate(tree1, tree1.depth-1, X, y, attrs)
 
         print new_tree.depth
 
@@ -213,9 +208,40 @@ class evtree(object):
 
         return correct/float(m)
 
-    def mutate(self, tree, node_idx):
+    def mutate(self, tree, node_idx, X, y, attrs):
         # randomly change the node at node_idx in tree
-        pass
+        # return a new Decision Tree
+        attrs = attrs[:]
+        split_attribute = attrs.pop(np.random.randint(0, len(attrs)))
+        attr_idx = split_attribute.keys()[0]
+        split_value = self.get_threshold(attr_idx, X, y)
+
+        head = tree.root
+        if node_idx == 0:
+            head.attribute = split_attribute
+            head.value = split_value
+            return DecisionTree(head)
+
+        count_idx = 0
+        ptr = head
+
+        queue1 = []
+        queue1.append(ptr)
+
+        while len(queue1) > 0:
+            ptr = queue1.pop(0)
+            if not ptr.terminal_node:
+                count_idx += 1
+                if count_idx == node_idx:
+                    break
+                if ptr.left is not None and not ptr.left.terminal_node:
+                    queue1.append(ptr.left)
+                if ptr.right is not None and not ptr.right.terminal_node:
+                    queue1.append(ptr.right)
+
+        ptr.attribute = split_attribute
+        ptr.value = split_value
+        return DecisionTree(head)
 
     def crossover(self, tree1, node_idx1, tree2, node_idx2):
         """ perform a cross-over operation given two trees
