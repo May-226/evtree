@@ -154,6 +154,20 @@ class evtree(object):
         node = root.left.right
         print (node.attribute, node.value)
 
+    def proto(self, X, y, attrs):
+        root1 = self.create_initial_tree(X, y, attrs)
+        tree1 = DecisionTree(root1)
+
+        root2 = self.create_initial_tree(X, y, attrs)
+        tree2 = DecisionTree(root2)
+
+        print tree1.depth
+        print tree2.depth
+
+        new_tree = self.crossover(tree1, 2, tree2, 0)
+
+        print new_tree.depth
+
     def initialization(self, X, y, attrs):
         # create an initial population of trees
         for _ in xrange(self.population_size):
@@ -199,20 +213,72 @@ class evtree(object):
 
         return correct/float(m)
 
-    def prune(self, tree_idx):
+    def mutate(self, tree, node_idx):
+        # randomly change the node at node_idx in tree
         pass
 
-    def minor_mutate(self, tree_idx):
-        pass
+    def crossover(self, tree1, node_idx1, tree2, node_idx2):
+        """ perform a cross-over operation given two trees
+        node at node idx1 in tree1 is replaced with the node at node_idx2 in tree 2
+        return the root of the off-spring """
+        if node_idx1 == 0:
+            return tree2
 
-    def major_mutate(self, tree_idx):
-        pass
+        count_idx1 = 1
+        count_idx2 = 0
 
-    def crossover(self, tree_idx1, tree_idx2):
-        pass
+        head1 = tree1.root
+        head2 = tree2.root
+
+        ptr1 = head1
+        ptr2 = head2
+
+        queue1 = []
+        queue1.append(ptr1)
+
+        while len(queue1) > 0:
+            ptr1 = queue1.pop(0)
+            if not ptr1.terminal_node:
+                count_idx1 += 1
+                if count_idx1 >= node_idx1:
+                    break
+                if ptr1.left is not None and not ptr1.left.terminal_node:
+                    queue1.append(ptr1.left)
+                if ptr1.right is not None and not ptr1.right.terminal_node:
+                    queue1.append(ptr1.right)
+
+        if node_idx2 == 0:
+            if ptr1.left is not None and not ptr1.left.terminal_node:
+                ptr1.left = ptr2
+            else:
+                ptr1.right = ptr2
+            return DecisionTree(head1)
+
+        queue2 = []
+        queue2.append(ptr2)
+
+        while len(queue2) > 0:
+            ptr2 = queue2.pop(0)
+            if not ptr1.terminal_node:
+                count_idx2 += 1
+                if count_idx2 == node_idx2:
+                    break
+                if ptr2.left is not None and not ptr2.left.terminal_node:
+                    queue2.append(ptr1.left)
+                if ptr2.right is not None and not ptr2.right.terminal_node:
+                    queue2.append(ptr1.right)
+
+        if ptr1.left is not None and not ptr1.left.terminal_node:
+            ptr1.left = ptr2
+        else:
+            ptr1.right = ptr2
+
+        return DecisionTree(head1)
+
 
     def survivor_selction(self):
-        # select the individuals who
+        # select the individuals who will be available for next generation
+
         pass
 
 def quartile_bins(data):
@@ -266,4 +332,5 @@ if __name__ == '__main__':
 
     et = evtree()
     #print et.get_threshold(2, X, y)
-    et.initialization(X, y, attributes)
+    #et.initialization(X, y, attributes)
+    et.proto(X, y, attributes)
