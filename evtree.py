@@ -14,14 +14,13 @@ class Node(object):
 
 class DecisionTree(object):
     def __init__(self, root):
-        self.tree = root
+        self.root = root
         self.depth = self.tree_depth()
-        #print self.depth
 
     def tree_depth(self):
         count = 0
-        if self.tree is not None and not self.tree.terminal_node:
-            count = self.number_of_nodes(self.tree)
+        if self.root is not None and not self.root.terminal_node:
+            count = self.number_of_nodes(self.root)
         return count
 
     def number_of_nodes(self, node):
@@ -33,10 +32,7 @@ class DecisionTree(object):
         return count
 
 
-
-
 class evtree(object):
-
 
     def __init__(self, p_crossover=0.6, p_mutation=0.4, p_split=0.7, p_prune=0.1, population_size = 400, max_iter = 500):
         self.population = []
@@ -55,9 +51,6 @@ class evtree(object):
         self.num_attributes = X.shape[1]
 
         # initialization
-
-        for tree_idx in xrange(self.population_size):
-            self.split(tree_idx, X, y)
 
 
     def test(self, X):
@@ -161,28 +154,39 @@ class evtree(object):
         print (node.attribute, node.value)
 
     def initialization(self, X, y, attrs):
-
+        # create an initial population of trees
         for _ in xrange(self.population_size):
             root1 = self.create_initial_tree(X, y, attrs)
             tree1 = DecisionTree(root1)
-            self.population.append((tree1, 0))
+            self.population.append((tree1, self.evaluate(tree1, X, y)))
 
-    def evaluate(self, X, y):
+    def evaluate(self, tree, X, y):
         # given a decision tree, return the classification accuracy?
-        pass
+        m, n = X.shape
+        correct = 0
 
-    def split(self, tree_idx, X, y):
-        tree = self.population[tree_idx]
-        if not tree:
-            # choose attribute to split on
-            attr_idx = np.random.randint(0, self.num_attributes)
-            # choose the threshold
-            attr_vals = X[:, attr_idx]
-            min_val = np.min(attr_vals)
-            threshold = min_val
-            while threshold == min_val:
-                threshold = np.random.choice(attr_vals, 1)[0]
-            tree.append((attr_idx, threshold))
+        for idx in xrange(m):
+            input_feature = X[idx, :]
+            dependent = y[idx]
+
+            node = tree.root
+            while node is not None:
+                if node.terminal_node:
+                    if node.value == dependent:
+                        correct += 1
+                    break
+                attr_idx = node.attribute.keys()[0]
+                feature_val = input_feature[attr_idx]
+                if feature_val <= node.value:
+                    node = node.left
+                else:
+                    node = node.right
+
+        return correct/float(m)
+
+
+
+
 
     def prune(self, tree_idx):
         pass
