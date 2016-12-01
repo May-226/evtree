@@ -34,7 +34,7 @@ class DecisionTree(object):
 
 class evtree(object):
 
-    def __init__(self, p_crossover=0.6, p_mutation=0.4, p_split=0.7, p_prune=0.1, population_size = 400, max_iter = 500):
+    def __init__(self, p_crossover=0.6, p_mutation=0.4, p_split=0.7, p_prune=0.1, population_size = 400, target_depth=1023, max_iter = 500):
         self.population = []
         self.p_crossover = p_crossover
         self.p_mutation = p_mutation
@@ -42,6 +42,7 @@ class evtree(object):
         self.p_prune = p_prune
         self.population_size = population_size
         self.max_iter = max_iter
+        self.target_depth = float(target_depth)
 
         self.num_attributes = None
 
@@ -113,7 +114,7 @@ class evtree(object):
         else:
             random_label = np.random.choice(y, 1)[0]
             y_left = y[X[:, attr_idx] <= split_value]
-            #node.left = Node(None, self.most_common_label(list(y_left)), terminal_node=True)
+            # node.left = Node(None, self.most_common_label(list(y_left)), terminal_node=True)
             node.left = Node(None, random_label, terminal_node=True)
 
             random_label = np.random.choice(y, 1)[0]
@@ -158,7 +159,21 @@ class evtree(object):
         for _ in xrange(self.population_size):
             root1 = self.create_initial_tree(X, y, attrs)
             tree1 = DecisionTree(root1)
-            self.population.append((tree1, self.evaluate(tree1, X, y)))
+            accuracy = self.evaluate(tree1, X, y)
+            depth = tree1.depth
+            fitness_score = self.fitness(accuracy, depth)
+            self.population.append((tree1, self.evaluate(tree1, X, y), fitness_score))
+
+    def fitness(self, accuracy, depth):
+        # compute a fitness score by approriately weighting accuracy and depth
+        # lower the number, the better
+
+        alpha1 = 0.99 # penalty for misclassification
+        alpha2 = 0.01 # penalty for large trees
+
+        depth_score = depth / self.target_depth
+        fitness_score = (alpha1*(1-accuracy)) + (alpha2*depth_score)
+        return fitness_score
 
     def evaluate(self, tree, X, y):
         # given a decision tree, return the classification accuracy?
@@ -184,10 +199,6 @@ class evtree(object):
 
         return correct/float(m)
 
-
-
-
-
     def prune(self, tree_idx):
         pass
 
@@ -201,6 +212,7 @@ class evtree(object):
         pass
 
     def survivor_selction(self):
+        # select the individuals who
         pass
 
 def quartile_bins(data):
